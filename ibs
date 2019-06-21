@@ -1,3 +1,106 @@
 #!/bin/bash
 
-echo isb
+# ./.ibs/ibs.sh "$@"
+
+function displayHelp {
+  echo "+-----------------------------------------------------------------------------------------------------------------------------------------------------+"
+  echo "| ibs usage:                                                                                                                                          |"
+  echo "+-----------+--------------+------------------------------------------+-------------------------------------------------------------------------------+"
+  echo "| Flag      | Second Flag  | Second Flag Parameter                    | Description                                                                   |"
+  echo "+-----------+--------------+------------------------------------------+-------------------------------------------------------------------------------+"
+  echo "| --help    |              |                                          | Displays this help message.                                                   |"
+  echo "| --version |              |                                          | Display the installed version and the latest version.                         |"
+  echo "| --init    |              |                                          | Downloads and installs the latest version or the version in 'ibs.properties'. |"
+  echo "| --init    | --version    | git tag || git commit hash || git branch | Downloads and installs the given version.                                     |"
+  echo "| --update* |              |                                          | Downloads and installs the latest version.                                    |"
+  echo "| --update* | --version    | git tag || git commit hash || git branch | Downloads and installs the given version.                                     |"
+  echo "+-----------+--------------+------------------------------------------+-------------------------------------------------------------------------------+"
+  exit
+}
+
+function displayVersions {
+  echo "Latest version: ${LATEST_VERSION}"
+  if [[ -f "./.ibs/version.ibs" ]]; then
+    source "./.ibs/version.ibs"
+    echo "Current version: ${IBS_VERSION}"
+  else
+    echo "ibs has not yet been installed."
+  fi
+  if [[ -f "./ibs.properties" ]]; then
+    sourceProperties "./ibs.properties"
+    echo "Expected version: ${ibs_version}"
+  else
+    echo "No expected version found."
+  fi
+  exit
+}
+
+function init {
+  echo "Setting up ibs on version ${1}."
+  getIbs ${1}
+}
+function getLatestVersion {
+  LATEST_RELEASE_URL="$(curl -fsSLI -o /dev/null -w %{url_effective} https://github.com/moonlitdoor/ibs/releases/latest && echo)"
+  LATEST_VERSION="${LATEST_RELEASE_URL##*/}"
+}
+
+function getIbs {
+  curl -Lso ibs.tar.gz "https://api.github.com/repos/moonlitdoor/ibs/tarball/$1"
+  if [[  -d "./.ibs" ]]; then
+    rm -r "./.ibs"
+  fi
+  mkdir ./.ibs
+  tar xzf ibs.tar.gz
+  rm ibs.tar.gz
+  mv moonlitdoor-ibs*/* .ibs
+  rm -r moonlitdoor-ibs*
+  if [[ -f "./ibs.properties" ]]; then
+    sed -i '' "s/\(ibs\.version=\).*\$/\1${1}/" ibs.properties
+  else
+    echo "ibs.version=$1" >> ibs.properties
+  fi
+  exit
+}
+
+function sourceProperties {
+  if [[ -f "$1" ]]; then
+    while IFS== read -r KEY VALUE
+    do
+      KEY=$(echo ${KEY} | tr '.' '_')
+      eval ${KEY}=\$VALUE
+    done < "$1"
+  fi
+}
+
+# Parse the parameters passed in
+for (( i=1; i<=$#; i++ ))
+do
+  if [[ "${!i}" = "--help" ]]; then
+    DISPLAY_HELP=true
+  elif [[ "${!i}" = "--init" ]]; then
+    INIT=true
+  elif [[ "${!i}" = "--version" ]]; then
+    VERSION="$(($i+1))"
+    ibs_version="${!VERSION}"
+  fi
+done
+
+if [[ "$DISPLAY_HELP" ]]; then
+  displayHelp
+else
+  getLatestVersion
+  if [[ "$#" = 0 ]] || [[ "$INIT" ]]; then
+    if [[ "$VERSION" ]] && [[ "$ibs_version" ]]; then
+      init "$ibs_version"
+    elif [[ -f "./ibs.properties" ]]; then
+      sourceProperties "./ibs.properties"
+      init "$ibs_version"
+    else
+      init "${LATEST_VERSION}"
+    fi
+  elif [[ "$VERSION" ]] && [[ ! "$USE_VERSION" ]]; then
+    displayVersions
+  fi
+fi
+
+./.ibs/ibs.sh "${@}"
