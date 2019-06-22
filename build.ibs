@@ -1,0 +1,41 @@
+#!/bin/bash
+
+function preEnvironmentHook {
+  echo preEnvironmentHook
+  :
+}
+
+function postEnvironmentHook {
+  echo postEnvironmentHook
+  :
+}
+
+function preBuildHook {
+  echo preBuildHook
+  :
+}
+
+function postBuildHook {
+  echo postBuildHook
+  :
+}
+
+function preTestHook {
+  echo preTestHook
+  :
+}
+
+function postTestHook {
+  echo postTestHook
+  :
+}
+
+function preAnalysisHook {
+  echo preEnvironmentHook
+  :
+}
+
+function postAnalysisHook {
+  echo preEnvironmentHook
+  :
+}
