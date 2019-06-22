@@ -1,21 +1,38 @@
 #!/bin/bash
 
-# ./.ibs/ibs.sh "$@"
+# Parse the parameters passed in
+for (( i=1; i<=$#; i++ )); do
+  if [[ "${!i}" = "--help" ]]; then
+    DISPLAY_HELP=true
+  elif [[ "${!i}" = "--version" ]]; then
+    VERSION="$(($i+1))"
+    ibs_version="${!VERSION}"
+  elif [[ "${!i}" = "--init" ]]; then
+    INIT=true
+  elif [[ "${!i}" = "--update" ]]; then
+    UPDATE=true
+  fi
+done
 
 function displayHelp {
-  echo "+-----------------------------------------------------------------------------------------------------------------------------------------------------+"
-  echo "| ibs usage:                                                                                                                                          |"
-  echo "+-----------+--------------+------------------------------------------+-------------------------------------------------------------------------------+"
-  echo "| Flag      | Second Flag  | Second Flag Parameter                    | Description                                                                   |"
-  echo "+-----------+--------------+------------------------------------------+-------------------------------------------------------------------------------+"
-  echo "| --help    |              |                                          | Displays this help message.                                                   |"
-  echo "| --version |              |                                          | Display the installed version and the latest version.                         |"
-  echo "| --init    |              |                                          | Downloads and installs the latest version or the version in 'ibs.properties'. |"
-  echo "| --init    | --version    | git tag || git commit hash || git branch | Downloads and installs the given version.                                     |"
-  echo "| --update* |              |                                          | Downloads and installs the latest version.                                    |"
-  echo "| --update* | --version    | git tag || git commit hash || git branch | Downloads and installs the given version.                                     |"
-  echo "+-----------+--------------+------------------------------------------+-------------------------------------------------------------------------------+"
+  echo "+----------------------------------------------------------------------------------------------------------------------------------------------------+"
+  echo "| ibs usage:                                                                                                                                         |"
+  echo "+-----------+-------------+------------------------------------------+-------------------------------------------------------------------------------+"
+  echo "| Flag      | Second Flag | Second Flag Parameter                    | Description                                                                   |"
+  echo "+-----------+-------------+------------------------------------------+-------------------------------------------------------------------------------+"
+  echo "| --help    |             |                                          | Displays this help message.                                                   |"
+  echo "| --version |             |                                          | Display the installed version and the latest version.                         |"
+  echo "| --init    |             |                                          | Downloads and installs the latest version or the version in 'ibs.properties'. |"
+  echo "| --init    | --version   | git tag || git commit hash || git branch | Downloads and installs the given version.                                     |"
+  echo "| --update  |             |                                          | Downloads and installs the latest version.                                    |"
+  echo "| --update  | --version   | git tag || git commit hash || git branch | Downloads and installs the given version.                                     |"
+  echo "+-----------+-------------+------------------------------------------+-------------------------------------------------------------------------------+"
   exit
+}
+
+function getLatestVersion {
+  LATEST_RELEASE_URL="$(curl -fsSLI -o /dev/null -w %{url_effective} https://github.com/moonlitdoor/ibs/releases/latest && echo)"
+  LATEST_VERSION="${LATEST_RELEASE_URL##*/}"
 }
 
 function displayVersions {
@@ -38,10 +55,6 @@ function displayVersions {
 function init {
   echo "Setting up ibs on version ${1}."
   getIbs ${1}
-}
-function getLatestVersion {
-  LATEST_RELEASE_URL="$(curl -fsSLI -o /dev/null -w %{url_effective} https://github.com/moonlitdoor/ibs/releases/latest && echo)"
-  LATEST_VERSION="${LATEST_RELEASE_URL##*/}"
 }
 
 function getIbs {
@@ -72,35 +85,28 @@ function sourceProperties {
   fi
 }
 
-# Parse the parameters passed in
-for (( i=1; i<=$#; i++ ))
-do
-  if [[ "${!i}" = "--help" ]]; then
-    DISPLAY_HELP=true
-  elif [[ "${!i}" = "--init" ]]; then
-    INIT=true
-  elif [[ "${!i}" = "--version" ]]; then
-    VERSION="$(($i+1))"
-    ibs_version="${!VERSION}"
-  fi
-done
-
 if [[ "$DISPLAY_HELP" ]]; then
   displayHelp
 else
   getLatestVersion
-  if [[ "$#" = 0 ]] || [[ "$INIT" ]]; then
-    if [[ "$VERSION" ]] && [[ "$ibs_version" ]]; then
-      init "$ibs_version"
-    elif [[ -f "./ibs.properties" ]]; then
-      sourceProperties "./ibs.properties"
-      init "$ibs_version"
-    else
-      init "${LATEST_VERSION}"
-    fi
-  elif [[ "$VERSION" ]] && [[ ! "$USE_VERSION" ]]; then
+  if [[ "$VERSION" ]] && [[ ! "$ibs_version" ]]  && [[ ! "$INIT" ]]  && [[ ! "$UPDATE" ]]; then
     displayVersions
+  elif [[  -d "./.ibs" ]];  then
+    init "${LATEST_VERSION}"
+  elif  [[ "$#" = 0 ]] && [[  -d "./.ibs" ]];  then
+    init "${LATEST_VERSION}"
+  elif [[ "$INIT" ]] && [[ ! "$VERSION" ]] && [[ ! -f "./ibs.properties" ]]; then
+    init "${LATEST_VERSION}"
+  elif [[ "$INIT" ]] && [[ ! "$VERSION" ]] && [[ -f "./ibs.properties" ]]; then
+    sourceProperties "./ibs.properties"
+    init "$ibs_version"
+  elif [[ "$INIT" ]] && [[ "$VERSION" ]] && [[ "$ibs_version" ]]; then
+    init "$ibs_version"
+  elif [[ "$UPDATE" ]] && [[ ! "$VERSION" ]]; then
+    init "${LATEST_VERSION}"
+  elif [[ "$UPDATE" ]] && [[ "$VERSION" ]] && [[ "$ibs_version" ]]; then
+    init "$ibs_version"
+  else
+    ./.ibs/ibs.sh "${@}"
   fi
 fi
-
-./.ibs/ibs.sh "${@}"
