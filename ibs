@@ -11,8 +11,21 @@ for (( i=1; i<=$#; i++ )); do
     INIT=true
   elif [[ "${!i}" = "--update" ]]; then
     UPDATE=true
+  elif [[ "${!i}" = "--log" ]]; then
+    LOG=true
   fi
 done
+
+function log {
+  if [[ "${LOG}" ]]; then
+    echo "${@}"
+  fi
+}
+
+function error {
+  echo -e "\033[0;31m${@}\033[0m"
+  exit 1
+}
 
 function displayHelp {
   echo "+----------------------------------------------------------------------------------------------------------------------------------------------------+"
@@ -21,6 +34,7 @@ function displayHelp {
   echo "| Flag      | Second Flag | Second Flag Parameter                    | Description                                                                   |"
   echo "+-----------+-------------+------------------------------------------+-------------------------------------------------------------------------------+"
   echo "| --help    |             |                                          | Displays this help message.                                                   |"
+  echo "| --log     |             |                                          | Enables debug logging for ibs.                                                |"
   echo "| --version |             |                                          | Display the installed version and the latest version.                         |"
   echo "| --init    |             |                                          | Downloads and installs the latest version or the version in 'ibs.properties'. |"
   echo "| --init    | --version   | git tag || git commit hash || git branch | Downloads and installs the given version.                                     |"
@@ -53,7 +67,7 @@ function displayVersions {
 }
 
 function init {
-  echo "Setting up ibs on version ${1}."
+  log "Setting up ibs on version ${1}."
   getIbs ${1}
 }
 
@@ -72,6 +86,9 @@ function getIbs {
   else
     echo "ibs.version=$1" >> ibs.properties
   fi
+  if [[ ! -f "./build.ibs" ]]; then
+    cp ./.ibs/build.ibs .
+  fi
   exit
 }
 
@@ -86,27 +103,35 @@ function sourceProperties {
 }
 
 if [[ "$DISPLAY_HELP" ]]; then
+  log "Displaying the Help Dialog"
   displayHelp
 else
+  log 2
   getLatestVersion
   if [[ "$VERSION" ]] && [[ ! "$ibs_version" ]]  && [[ ! "$INIT" ]]  && [[ ! "$UPDATE" ]]; then
+    log 3
     displayVersions
-  elif [[  -d "./.ibs" ]];  then
-    init "${LATEST_VERSION}"
-  elif  [[ "$#" = 0 ]] && [[  -d "./.ibs" ]];  then
+  elif [[ ! -d "./.ibs" ]];  then
+    log 4
     init "${LATEST_VERSION}"
   elif [[ "$INIT" ]] && [[ ! "$VERSION" ]] && [[ ! -f "./ibs.properties" ]]; then
+    log 6
     init "${LATEST_VERSION}"
   elif [[ "$INIT" ]] && [[ ! "$VERSION" ]] && [[ -f "./ibs.properties" ]]; then
+    log 7
     sourceProperties "./ibs.properties"
     init "$ibs_version"
   elif [[ "$INIT" ]] && [[ "$VERSION" ]] && [[ "$ibs_version" ]]; then
+    log 8
     init "$ibs_version"
   elif [[ "$UPDATE" ]] && [[ ! "$VERSION" ]]; then
+    log 9
     init "${LATEST_VERSION}"
   elif [[ "$UPDATE" ]] && [[ "$VERSION" ]] && [[ "$ibs_version" ]]; then
+    log 10
     init "$ibs_version"
   else
+    log 11
     ./.ibs/ibs.sh "${@}"
   fi
 fi
