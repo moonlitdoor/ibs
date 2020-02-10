@@ -4,6 +4,8 @@
 for (( i=1; i<=$#; i++ )); do
   if [[ "${!i}" = "--help" ]]; then
     DISPLAY_HELP=true
+  elif [[ "${!i}" = "--local" ]]; then
+    LOCAL=true
   elif [[ "${!i}" = "--version" ]]; then
     VERSION="$(($i+1))"
     ibs_version="${!VERSION}"
@@ -81,6 +83,10 @@ function getIbs {
   rm ibs.tar.gz
   mv moonlitdoor-ibs*/* .ibs
   rm -r moonlitdoor-ibs*
+  unpack ${1}
+}
+
+function unpack {
   if [[ -f "./ibs.properties" ]]; then
     sed -i '' "s/\(ibs\.version=\).*\$/\1${1}/" ibs.properties
   else
@@ -90,6 +96,15 @@ function getIbs {
     cp ./.ibs/build.ibs .
   fi
   exit
+}
+
+function initLocally {
+  if [[ -d "./.ibs" ]];  then
+    rm -r ./.ibs
+  fi
+  mkdir ./.ibs
+  cp ../ibs/* ./.ibs
+  unpack "local"
 }
 
 function sourceProperties {
@@ -106,9 +121,12 @@ if [[ "$DISPLAY_HELP" ]]; then
   log "Displaying the Help Dialog"
   displayHelp
 else
-  log 2
+  log
   getLatestVersion
-  if [[ "$VERSION" ]] && [[ ! "$ibs_version" ]]  && [[ ! "$INIT" ]]  && [[ ! "$UPDATE" ]]; then
+  if [[ "$LOCAL" ]]; then
+    log 2
+    initLocally
+  elif [[ "$VERSION" ]] && [[ ! "$ibs_version" ]]  && [[ ! "$INIT" ]]  && [[ ! "$UPDATE" ]]; then
     log 3
     displayVersions
   elif [[ ! -d "./.ibs" ]];  then
